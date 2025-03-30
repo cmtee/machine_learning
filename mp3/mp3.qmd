@@ -1,0 +1,347 @@
+---
+documentclass: scrartcl
+classoption:
+  - DIV=11
+  - numbers=noendperiod
+papersize: letter
+header-includes:
+  - '\KOMAoption{captions}{tableheading}'
+block-headings: true
+title: ML_MP3
+author: Clarice Tee
+date: 'February 26, 2025'
+fontsize: 11pt
+geometry: a4paper
+format: pdf
+---
+# Data Analysis
+
+1. 
+```{python}
+# Import packages
+import pandas as pd
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso
+from sklearn.model_selection import GridSearchCV, KFold
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings("ignore")
+from scipy import stats
+%matplotlib inline
+import seaborn as sns
+sns.set_style("darkgrid")
+import warnings
+warnings.filterwarnings("ignore")
+from sklearn.linear_model import LassoLarsIC 
+```
+
+
+```{python}
+directory = r"C:\Users\clari\OneDrive\Documents\Machine Learning\mp3"
+covid_df = os.path.join(directory, "Data-Covid003.csv")
+covid_df = pd.read_csv(covid_df, encoding="latin1")
+print(covid_df.shape, "\n")
+```
+
+
+```{python}
+# Filter the relevant variables
+var_desc = os.path.join(directory, "PPHA_30545_MP03-Variable_Description.xlsx")
+var_desc = pd.read_excel(var_desc)
+var_desc["Source"].unique()
+# "NY Times", "Opportunity Insights", "PM_COVID"
+var_desc= var_desc[
+    (var_desc["Source"] == "Opportunity Insights") | (
+        var_desc["Source"] == "PM_COVID")
+]
+relevant_vars = list(var_desc["Variable"].unique())
+covid_df = covid_df[["county", "state", "deathspc"] + relevant_vars]
+# Set county as index
+covid_df.set_index(["county"], inplace=True)
+# Print the filtered dataset
+pd.set_option("display.max_columns", None)
+pd.set_option("display.max_rows", None)
+print(covid_df.shape, "\n")
+print(covid_df.head(1), "\n")
+```
+
+2 . 
+```{python}
+# Check data types to find out next process
+val_type = covid_df.dtypes.reset_index()
+val_type = val_type[
+(val_type[0] != "int64") & (val_type[0] != "float64")
+]
+print(val_type)
+```
+```{python}
+# compute summary stats of relevant vars
+summary_relevant_vars = covid_df.describe()
+print(summary_relevant_vars)
+```
+
+3.
+```{python}
+# Count NAs in each column
+na_count_val = pd.DataFrame(
+    np.sum(covid_df.isna(), axis=0), columns=["Count NAs"]
+)
+na_count_val = na_count_val[na_count_val["Count NAs"] != 0]
+print(na_count_val)
+```
+
+Drop
+```{python}
+covid_df = covid_df.dropna()
+print(covid_df.shape)
+```
+
+4. Making dummy vars
+```{python}
+# Check how many states there are
+print(covid_df["state"].describe(), "\n")
+# Convert categorical variable into dummy variables
+covid_df = pd.get_dummies(covid_df, columns=["state"], drop_first=True)
+print(covid_df.head())
+```
+
+The dataset has 47 states
+
+5. Split the sample into a training set (80%) and a test set (20%).
+```{python}
+# Split the features and target
+X = covid_df.copy()
+y = X.pop("deathspc")
+# Split training test set
+X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                    test_size=0.2,
+                                                    random_state=11)
+```
+
+6. Using the training set, fit a model of COVID-19 deaths per capita (y =deathspc) as a function
+of the Opportunity Insights and PM COVID predictors listed in the spreadsheet, as well
+as state-level fixed effects (the state dummy variables) using OLS.
+
+```{python}
+ols = LinearRegression().fit(X_train, y_train)
+```
+
+a.
+```{python}
+# Predict and get  MSE of the training set
+y_pred_train_ols = ols.predict(X_train)
+mse_train_ols = mean_squared_error(y_train, y_pred_train_ols)
+print("OLS Training MSE: ", round(mse_train_ols, 2))
+# Predict and and MSE on the test set
+y_pred_test_ols = ols.predict(X_test)
+mse_test_ols = mean_squared_error(y_test, y_pred_test_ols)
+print("OLS Test MSE: ", round(mse_test_ols, 2))
+```
+
+b.
+ Overfitting may be an issue due to the number of predictors we have, even after filtering. This uses up the dgrees of freeom and reduces flexibility. The test error is  about 50% larger than the training error, which may cause a substantial difference considering the range of values of deathspc”.
+
+```{python}
+print(covid_df["deathspc"].mean())
+print(covid_df["deathspc"].median())
+print(max(covid_df["deathspc"]))
+```
+
+7. Scaling predictors
+
+```{python}
+print(covid_df["deathspc"].mean())
+print(covid_df["deathspc"].median())
+print(max(covid_df["deathspc"]))
+```
+
+Ridge REgression
+a. Set up the model and a grid of values of lambda
+
+```{python}
+# set up a ridge regression model
+ridge = Ridge()
+# Choosing alpha
+alpha_param = np.power(10, (np.linspace(-2, 2, 100)))
+print(alpha_param)
+# Create a parameters grid
+param_grid = [{
+    "alpha": alpha_param
+}]
+
+# Helper functions
+def vector_values(grid_search):
+    final = grid_search.cv_results_
+    mean_vec = -np.array(final["mean_test_score"])
+    std_vec = np.array(final["std_test_score"])
+    return mean_vec, std_vec
+
+def highlight_min(data, color="yellow"):
+    attr = f"background-color: {color}"
+    if data.ndim == 1:  # Series
+        # data == data.min() compares each value to the minimum
+        # is_min becomes a Boolean series marking minimum values
+        is_min = data == data.min()
+        return [attr if v else "" for v in is_min]
+    return ""
+```
+
+
+
+b.  Define function for estimation by 10FCV and c. plot
+```{python}
+# Part b
+kfcv = KFold(n_splits=10, random_state=25, shuffle=True)
+def tune_10fcv_ridge(grid):
+    grid_search_ridge = GridSearchCV(
+        ridge,
+        grid,
+        cv=kfcv,
+        scoring="neg_mean_squared_error"
+    )
+    grid_search_ridge.fit(X_train, y_train)
+    
+    tested_alphas = [params["alpha"] for params in grid_search_ridge.cv_results_["params"]]
+    mean_vec_ridge, std_vec_ridge = vector_values(grid_search_ridge)
+    
+    return tested_alphas, mean_vec_ridge, std_vec_ridge, grid_search_ridge
+
+# Part c: 
+tested_alphas, mean_vec_ridge, std_vec_ridge, grid_search_ridge = tune_10fcv_ridge(param_grid)
+
+# Plotting code
+fig, ax = plt.subplots(figsize=(16, 9))
+ax.set_title("Ridge Regression", fontsize=20)
+ax.plot(tested_alphas, mean_vec_ridge, label="Mean MSE")
+ax.errorbar(tested_alphas, mean_vec_ridge, yerr=std_vec_ridge, fmt="o",
+            ecolor="r", capsize=5, alpha=0.5, label="MSE Std Dev")
+ax.set_ylabel("MSE", fontsize=20)
+ax.set_xlabel("Lambda", fontsize=20)
+plt.legend()
+plt.show()
+
+# Get best parameters
+best_alpha_ridge = grid_search_ridge.best_params_["alpha"]
+best_mse_ridge = -grid_search_ridge.best_score_
+print(f"Best hyper-parameter: {best_alpha_ridge}")
+print(f"Best MSE: {best_mse_ridge}")
+```
+
+```{python}
+# Try  the starting grid
+_ = tune_10fcv_ridge(param_grid)
+```
+
+It seems that the estimated MSE increases as lambda increases, so we are not sure that lambda = 100 is the optimum where MSE is at least minimized before it starts to increase again. Thus,
+we need to try another grid covering lambda larger than 100.
+By trying the grid ranging from 0 to 1000 , we can observe qhere the optimallambda lies.
+
+d.
+```{python}
+# Choosing and reporting the optimal value of lambda
+# Try another grid to findout the best point
+# Set the range of the hyperparameter
+alpha_param = np.power(10, (np.linspace(-2, 3, 100)))
+print(alpha_param)
+# Create a parameters grid
+param_grid = [{
+    "alpha": alpha_param
+}]
+
+_ = tune_10fcv_ridge(param_grid)
+```
+
+# (https://devpress.csdn.net/python/62fd9c6b7e66823466192a80.html)
+
+```{python}
+# Try another grid to findout the best point
+# Set the range of the hyperparameter
+alpha_param = np.linspace(196, 221, 50)
+print(alpha_param)
+# Create a parameters grid
+param_grid = [{
+    "alpha": alpha_param
+}]
+# Properly unpack the returned values
+_, _, _, grid_search_final = tune_10fcv_ridge(param_grid)
+best_alpha_ridge = grid_search_final.best_params_["alpha"]
+
+```
+
+e. Reestimate the model
+```{python}
+ridge = Ridge(alpha=best_alpha_ridge).fit(X_train, y_train)
+```
+
+LAsso
+```{python}
+# Set the grid of the hyperparameter
+alpha_range = np.linspace(0, 1, 100)
+print(alpha_range)
+param_grid = {"lasso__alpha": alpha_range}
+# Set up a pipeline and GridSearchCV object
+pipeline = make_pipeline(
+    StandardScaler(),
+    Lasso(random_state=1)
+)
+grid_search = GridSearchCV(
+    pipeline, param_grid,
+    cv=kfcv,
+    scoring="neg_mean_squared_error"
+)
+# Fitting the GridSearchCV object
+grid_search.fit(X_train, y_train)
+# Extract results and convert "mean_test_score" to positive values
+# Note: the term mean_test_score refers to the average mean squared error (MSE)
+# across the cross-validation folds for each hyper-parameter value when using GridSearchCV.
+results = pd.DataFrame(grid_search.cv_results_)
+results["mean_test_score"] = -results["mean_test_score"]
+# Plotting mean test scores for each hyper-parameter value using fig, ax
+fig, ax = plt.subplots(figsize=(16, 9))
+ax.plot(alpha_range, results["mean_test_score"], marker="o")
+ax.set_xlabel("Lambda")
+ax.set_ylabel("Average Mean Squared Error")
+ax.set_title("Average Mean Squared Error for each Alpha")
+plt.show()
+# Getting the best hyper-parameter value and corresponding MSE
+best_alpha_lasso = grid_search.best_params_["lasso__alpha"]
+best_mse_lasso = grid_search.best_score_
+print(f"Best hyper-parameter: {best_alpha_lasso}")
+print(f"Best MSE: {-best_mse_lasso}")
+```
+
+re-estimate the model
+```{python}
+lasso = Lasso(alpha=best_alpha_lasso).fit(X_train, y_train)
+```
+
+8.
+```{python}
+# Predict and calc Ridge model MSE on the training/test set
+y_pred_train_ridge = ridge.predict(X_train)
+mse_train_ridge = mean_squared_error(y_train, y_pred_train_ridge)
+print("Ridge Regression Training MSE: ", round(mse_train_ridge, 2))
+y_pred_test_ridge = ridge.predict(X_test)
+mse_test_ridge = mean_squared_error(y_test, y_pred_test_ridge)
+print("Ridge Regression Test MSE: ", round(mse_test_ridge, 2))
+# Predict and calc Lasso model MSE on the training/test set
+y_pred_train_lasso = lasso.predict(X_train)
+mse_train_lasso = mean_squared_error(y_train, y_pred_train_lasso)
+print("Lasso Training MSE: ", round(mse_train_lasso, 2))
+y_pred_test_lasso = lasso.predict(X_test)
+mse_test_lasso = mean_squared_error(y_test, y_pred_test_lasso)
+print("Lasso Test MSE: ", round(mse_test_lasso, 2))
+```
+
+It looks like the  Ridge regression and Lasso result in a better prediction than the OLS.
+
+While OLS achieves the lowest training MSE  the regularization penalties in Ridgeand Lasso effectively reduce model variance, yielding better test set performance. Plus the OLS inherently has a lower bias.
+

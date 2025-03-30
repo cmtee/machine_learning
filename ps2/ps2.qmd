@@ -1,0 +1,475 @@
+---
+title: "ML_PS2"
+author: "Clarice Tee"
+date: February 6, 2025
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+include-before-body:
+  text: |
+    \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+      showspaces = false,
+      showtabs = false,
+      breaksymbolleft={},
+      breaklines
+    }
+---
+
+# Part 1
+
+```{python}
+import pandas as pd
+import numpy as np
+import statsmodels.formula.api as smf
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib import pyplot
+import os
+import statsmodels.formula.api as smf
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error
+```
+
+1.a.
+QDA is expected to perform better on the training set/
+This is because the QDA's greater flexibility yields a closer fit, but does have greater variance.
+
+LDA is expected to do better on the test. While the QDA is flexible, this means it runs into the
+problem of overfitting the linear Bayes decision boundary.
+
+1.b.(Non-linear)
+ While QDA's flexibility increases its variance compared to LDA, when the Bayes boundary is non-linear, this flexibility is actually aa good thing because it can be offset by a larger reduction in bias, thus better test performance.
+
+1.c.
+We expect the tesst predition accuracy of the QDA to improve relative to the LDA
+as the sample size  increases since is flexibility will yield a better fit, especially when we have more samples and this also helps deal with the problem of variance.
+We expect the test prediction accuracy of QDA relative to LDA to improve.
+
+1.d.
+False.Flexible methods like QDA require more data to prevent overfitting, which happens due to the model's sensitivity to the noise in the training sets. Overfitting
+would make the QDA have a higher test error rate than the LDA, which already approximates the Bayes decision boundary accurately. 
+
+
+
+# Part 2
+
+2.a.
+X = [40 hours, 3.5 GPA]
+From the logistic regression model, we can fill in the formula:
+P(Y=1)|X = exp(-6 + 0.05 * X1 + X2) / (1 + exp(-6 + 0.05 * X1 + X2))
+```{python}
+X1 = 40  
+X2 = 3.5  
+
+
+probability_A = np.exp(-6 + 0.05 * X1 + X2) / (1 + np.exp(-6 + 0.05 * X1 + X2))
+
+print(f"Probability of getting an A is {probability_A * 100:.1f}%")
+```
+
+2.b.
+Same student, 50%, how many hours (X1)
+
+P(Y=.5)|X is .5 = exp(-6 + 0.05 * X1 + 3.5) / (1 + exp(-6 + 0.05 * X1 + 3.5))
+
+solving for x1 gives us:
+exp(0.05X1 − 2.5) = 1
+```{python}
+X1 = 2.5 / 0.05
+
+print(f"Student who wants a  50% probability needs to study {X1} hours")
+```
+
+# Part 3
+
+Ave profit with dividends(X bar) =10
+Ave profit 1/0 dividends(X bar) =0
+
+Variance =36
+
+80% issued dividends.
+
+Using Bayes' theorem:
+
+A. Using normal distribution: Get likelihood for a company with profits X=4 to be in with dividend group
+
+B. Use 80% with dividend and 20% without dividend to wieigh likelihoods.
+
+C. Calculate posterior probability (weighted likelihood of with dividend group divided by the weighted likelihoods of with and without dividend)
+
+```{python}
+w_dividend = 0.8
+wo_dividend = 0.2
+exp_w_dividend = np.exp(-0.5)
+exp_wo_dividend = np.exp(-2 / 9)
+
+# Compute posterior probability
+posterior_w_dividend = (w_dividend * exp_w_dividend) / (w_dividend * exp_w_dividend + wo_dividend * exp_wo_dividend)
+
+print(f"Probability of issuing a dividend: {posterior_w_dividend:.4f} or {posterior_w_dividend * 100:.2f}%")
+```
+
+# Part 4
+
+```{python}
+# Load the dataset
+directory = r"C:\Users\clari\OneDrive\Documents\Machine Learning\ps2"
+auto_path = os.path.join(directory, "Data-Auto.csv")
+auto_df = pd.read_csv(auto_path)
+print(auto_df.dtypes)
+print(auto_df.shape)
+```
+
+
+4.a.
+Making dummy variable
+```{python}
+auto_df["mpg01"] = np.where(auto_df["mpg"] > auto_df["mpg"].median(), 1, 0)
+```
+
+4.b. It looks like horsepower, acceleration, and weight could be useful in predicting mpg01 because the number of observations and the value of the variable tends to increase or decrease based on if mpg01 is 0 or 1 (although there are some overlaps)
+
+Scatterplot
+```{python}
+# creating a list of variables to loop through
+auto_vars = ['cylinders', 'displacement', 'horsepower', 'weight', 'acceleration', 'year', 'origin'] #excluding name, which is an object
+
+
+for var in auto_vars:
+    plt.figure(figsize=(6, 4))
+    sns.scatterplot(x=var, y='mpg01', data=auto_df)
+    plt.title(f'Scatter Plot: {var} vs mpg')
+    plt.tight_layout
+    plt.show()
+```
+
+Boxplot
+```{python}
+for var in auto_vars:
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x='mpg01', y=var, data=auto_df)
+    plt.title(f'{var} Distribution by MPG Category', size=14)
+    plt.xlabel('High MPG (1) vs Low MPG (0)')
+    plt.ylabel(var)
+    plt.show()
+
+```
+
+From the scatterplots, we see a bit of a patterm from horsepower, acceleration,and weight, where mpg01 being equal to 0 or 1 is more likely based on whether these variables have higher or lower values. ALthough there is some overlap, it  at least shows greater distinctions compared to the other variables.
+
+From the boxplots, we can see that the median weight of mgp01 =1 cars much lower than that of mpg01 = 0 cars.So it may suggest heavier cars have lower mpg. We also see that mpg01=1 cars have much lower horsepower as mpg01 = 0 cars (though they have more variance in values)While acceleration shows less clear separation than weight/horsepower in the  plots, it still shows a trend where faster acceleration (lower values) tends to be associated with lower mpg (mpg01=0)
+
+Meanwhile, the other vairables don't show as clear patterns or have more overlaps in terms of the values of mpg01=0 or =1.
+
+4.c.Splitting to traiing and test set
+```{python}
+X = auto_df[['mpg', 'cylinders', 'displacement', 'horsepower', 'weight', 'acceleration', 'year', 'origin']]
+
+y = auto_df["mpg01"]
+
+# Train test split
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=22)
+
+
+# Sanity check for index matching
+display(X_train.head(), X_test.head(), y_train.head(), y_test.head())
+```
+
+```{python}
+# Make a copy of the training and test data
+X_train_dummy = X_train.copy()
+X_test_dummy = X_test.copy()
+
+## Insert the dummy variable in each set. 
+## df.insert(column #, 'column name', value)
+X_train_dummy.insert(0, 'test', 0)
+X_test_dummy.insert(0, 'test', 1)
+
+
+X_full = pd.concat([X_test_dummy, X_train_dummy], axis = 0)
+
+display(X_full)
+print(X_full['test'].value_counts())
+```
+
+Run regression
+```{python}
+result = smf.ols(
+    'test ~ mpg + cylinders + displacement + horsepower + weight + acceleration + year + origin',
+    data=X_full
+).fit()
+print(result.summary())
+```
+
+Since all  the p-values are larger than 0.1 we aren't as worried that the train and test set are significantly different, but we do want to check distribuiton of the training and test sets to see if they are balanced on characteristics we haven't included or are unobservable
+
+```{python}
+## Check the  distribution in the training and test sets
+
+print(f'Percentage of positive labels in the test set: {round(y_test.mean()*100, 2)}')
+print(f'Percentage of positive labels in the training set: {round(y_train.mean()*100, 2)}')
+```
+
+4.d. LDA
+```{python}
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+# Choosing predictors related to mpg01
+X_train_rel = X_train.copy()[["horsepower", "weight", "acceleration"]]
+X_test_rel = X_test.copy()[["horsepower", "weight", "acceleration"]]
+
+# Fit the LDA model
+lda_model = LinearDiscriminantAnalysis()
+lda_model.fit(X_train_rel, y_train)
+# view the predicted test values
+y_pred_lda = lda_model.predict(X_test_rel)
+y_pred_lda
+```
+
+Testing error rate: #cite how to get this
+```{python}
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve
+
+error_rate_lda = 1 - accuracy_score(y_test, y_pred_lda)
+
+print(f"The error rate is: {round(error_rate_lda, 4)*100}%")
+
+```
+
+4.e. QDA model
+
+```{python}
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+qda_model = QuadraticDiscriminantAnalysis()
+qda_model.fit(X_train_rel, y_train)
+
+# view the predicted test values
+y_pred_qda = qda_model.predict(X_test_rel)
+y_pred_qda
+```
+
+```{python}
+# Get  the error rate
+error_rate_qda = 1 - accuracy_score(y_test, y_pred_qda)
+
+print(f"The QDA model's error rate is: {round(error_rate_qda, 4)*100}%")
+```
+
+4.f. Logistic regression
+```{python}
+# Fit the model
+from sklearn.linear_model import LogisticRegression
+logisticRegr = LogisticRegression(max_iter=500)
+logisticRegr.fit(X_train_rel, y_train)
+
+# Predict the test set
+y_pred_log = logisticRegr.predict(X_test_rel)
+
+```
+
+Get test error
+```{python}
+error_rate_log = 1 - accuracy_score(y_test, logisticRegr.predict(X_test_rel))
+
+# Print the error rate
+print(f"The logistic regression model's error rate is: {round(error_rate_log, 4)*100}%")
+```
+
+4.g.
+```{python}
+from sklearn.naive_bayes import GaussianNB
+bayes_model = GaussianNB()
+bayes_model.fit(X_train_rel, y_train)
+# view the predicted test values
+y_pred_bayes = bayes_model.predict(X_test_rel)
+y_pred_bayes
+# Compute the error rate
+error_rate_bayes = 1 - accuracy_score(y_test, y_pred_bayes)
+# Print the error rate
+print(f"The Naive Bayes model has an error rate of: {round(error_rate_bayes, 4)*100}%")
+
+```
+
+https://builtin.com/artificial-intelligence/gaussian-naive-bayes
+
+
+# Part 5
+5.a.
+```{python}
+# Load the dataset
+directory = r"C:\Users\clari\OneDrive\Documents\Machine Learning\ps2"
+default_path = os.path.join(directory, "Data-Default.csv")
+default_df = pd.read_csv(default_path)
+print(default_df.dtypes)
+print(default_df.shape)
+default_df.head(5)
+```
+
+Logistic Regression of income and balance on default
+
+```{python}
+# Cchange default into a dummy variable
+default_df["default01"] = default_df["default"].map({"Yes": 1, "No": 0})
+
+print(default_df["default01"].value_counts(normalize=True) * 100)  
+# Checking if it worked
+yes_rows = default_df[default_df["default"] == "Yes"]
+print(yes_rows.head(5))
+no_rows = default_df[default_df["default"] == "No"]
+print(no_rows.head(5))
+```
+
+```{python}
+# Defining X and y
+X_default = default_df[["income", "balance"]]  
+y_default = default_df["default01"]
+
+# Logisitc regression model
+default_logit_reg = LogisticRegression(max_iter=500)
+default_logit_reg.fit(X_default,y_default)
+```
+
+5.b.Spit data, random seed 42, .7
+```{python}
+X_train, X_validation, y_train, y_validation = train_test_split(X_default, y_default, train_size=0.7, random_state=42)
+# Sanity check
+display(X_train.head(), X_validation.head(), y_train.head(), y_validation.head())
+```
+
+```{python}
+# Fit the training data into logistic regression
+default_logit_train= LogisticRegression(max_iter=500)
+default_logit_train.fit(X_train,y_train)
+```
+
+```{python}
+# Predict the validation set
+y_pred_log = default_logit_train.predict_proba(X_validation)[:, 1]
+print("Predicted probabilities above 0.5:", y_pred_log[y_pred_log >= 0.5])
+print("Count of values >= 0.5:", len(y_pred_log[y_pred_log >= 0.5]))
+
+```
+
+```{python}
+# Classifying to default category if porbablity is > 0.5
+y_pred_log = np.array(y_pred_log)  
+y_pred_log = y_pred_log.astype(float)
+y_default_category = np.where(y_pred_log >= 0.5, 1, 0)
+print(y_pred_log[:10])  # First 10 predictions
+print(type(y_pred_log))  # Type check
+print(pd.Series(y_default_category).value_counts())
+```
+
+```{python}
+# Compute the error rate
+error_valid = 1 - accuracy_score(y_validation, y_default_category)
+# Print the error
+print(f"The validation set error is {round(error_valid, 4)*100}%")
+```
+
+5.c.
+```{python}
+X = default_df[["income", "balance"]]  
+y = default_df["default01"]
+
+
+random_states = [2, 6, 9]
+error_rates = []
+
+for state in random_states:
+    # Split data with current random state
+    X_train, X_validation, y_train, y_validation = train_test_split(
+        X, y, 
+        train_size=0.7, 
+        random_state=state
+    )
+    
+    # Train model
+    default_logit_train = LogisticRegression(max_iter=500)
+    default_logit_train.fit(X_train, y_train)
+    
+    # Predict and calculate error
+    y_pred_log = default_logit_train.predict_proba(X_validation)[:, 1]
+    y_default_category = np.where(y_pred_log > 0.5, 1, 0)
+    error_rate = 1 - accuracy_score(y_validation, y_default_category)
+    
+    error_rates.append(error_rate)
+    print(f"Random state {state}: validation error = {error_rate:.2%}")
+
+# Analyze results
+print("\nSummary:")
+print(f"Average error rate: {np.mean(error_rates):.2%}")
+print(f"Standard deviation: {np.std(error_rates):.2%}")
+
+```
+
+- Consistency: The error rates across the three relatively close, ranging from 2.37% to 3.07%, meaning it's not overly sensitive to how the data is split
+- Low Error Rates: They all have lower error rates than the random state 42 split.
+Slight Variability: There is some variability in the results, with a standard deviation of 0.31%. This variability is expected due to the random nature of the splits and demonstrates the importance of using multiple splits to assess model performance.
+
+These results give us some level of confidence in the model's performance and its ability to generalize to new data. Butmaybe doing the k-fold cross-validation will get us an even more robust estimate of the model's performance.
+
+5.d.
+```{python}
+# Create dummy variable for student
+default_df["student01"] = default_df["student"].map({"Yes": 1, "No": 0})
+
+# Checking if it worked
+yes_rows = default_df[default_df["student"] == "Yes"]
+print(yes_rows.head(5))
+no_rows = default_df[default_df["student"] == "No"]
+print(no_rows.head(5))
+```
+
+```{python}
+# Deine X, y
+X = default_df[["income", "balance", "student01"]]  
+y = default_df["default01"]
+
+# Logisitc regression model
+student_logit_reg = LogisticRegression(max_iter=500)
+student_logit_reg.fit(X,y)
+```
+
+
+```{python}
+X_train, X_validation, y_train, y_validation = train_test_split(X, y, train_size=0.7, random_state=42)
+# Sanity check
+display(X_train.head(), X_validation.head(), y_train.head(), y_validation.head())
+```
+
+```{python}
+# Fit the training data into logistic regression
+student_logit_train= LogisticRegression(max_iter=500)
+student_logit_train.fit(X_train,y_train)
+```
+
+```{python}
+# Predict the validation set
+student_y_pred_log = student_logit_train.predict_proba(X_validation)[:, 1]
+student_y_pred_log[:5]
+```
+
+```{python}
+# Classifying to default category if porbablity is > 0/5
+student_y_default_category = np.where(student_y_pred_log > 0.5, 1 , 0)
+```
+
+```{python}
+# Compute the error rate
+error_valid = 1 - accuracy_score(y_validation, student_y_default_category)
+# Print the error
+print(f"The validation set error is {round(error_valid, 4)*100}%")
+print(pd.Series(student_y_default_category).value_counts())
+```
+
+Adding in student dummy variable didn't change the test error rate of the validation set.
+This can be interpreted as: being a student doesn't affect one's probability of default, 
+all else equal. This doesn't match with our expectations because being a student probably
+affects default. Maybe if we added in the other variable like balance and income into the model,
+this may lower the error rate.

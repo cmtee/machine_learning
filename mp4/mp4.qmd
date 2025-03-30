@@ -1,0 +1,272 @@
+---
+title: ML_MP4
+author: Clarice Tee
+date: 'March 14, 2025'
+fontsize: 11pt
+geometry: a4paper
+format: pdf
+---
+
+1.
+```{python}
+# Importing necessary libraries from scikit-learn for Support Vector Machine (SVM) classification
+from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.preprocessing import StandardScaler
+from sklearn import metrics
+
+# Importing essential libraries for data manipulation and visualization
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+
+# Importing datasets module from scikit-learn for access to built-in datasets
+from sklearn import datasets
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import accuracy_score
+
+from sklearn import datasets
+
+```
+
+Data types:
+vote and work are integers (binary)
+
+prtage is numerical (int)
+
+Categorical variables (pesex, ptdtrace, pehspnon, prcitshp, peeduca, vote) are encoded as dummy variables
+
+```{python}
+directory = r"C:\Users\clari\OneDrive\Documents\Machine Learning\mp4"
+df_vote = os.path.join(directory, "vote.csv")
+df_vote = pd.read_csv(df_vote, encoding="latin1")
+print(df_vote.shape, "\n")
+print(df_vote.dtypes)
+print(df_vote.shape)
+df_vote.head()
+```
+
+```{python}
+directory = r"C:\Users\clari\OneDrive\Documents\Machine Learning\mp4"
+df_work = os.path.join(directory, "work.csv")
+df_work = pd.read_csv(df_work, encoding="latin1")
+print(df_work.shape, "\n")
+print(df_work.dtypes)
+```
+
+```{python}
+na_count_vote = pd.DataFrame(np.sum(df_vote.isna(), axis = 0), columns = ["Count NAs"])
+print(na_count_vote)
+
+na_count_work = pd.DataFrame(np.sum(df_work.isna(), axis = 0), columns = ["Count NAs"])
+print(na_count_work)
+```
+
+2. 
+```{python}
+# Map labels to binary
+work_mapper = {'flexible': 1, "not flexible": 0}
+vote_mapper = {'vote': 1, "did not vote": 0}
+df_work['work'] = df_work['work'].replace(work_mapper)
+df_vote['vote'] = df_vote['vote'].replace(vote_mapper)
+
+```
+
+2.c.and 2.d.
+```{python}
+# One-hot encoding for categorical variables
+df_work = pd.get_dummies(df_work, columns=['ptdtrace', 'pesex', 'pehspnon', 'peeduca', 'prcitshp'], drop_first=True)
+df_vote = pd.get_dummies(df_vote, columns=['ptdtrace', 'pesex', 'pehspnon', 'peeduca', 'prcitshp'], drop_first=True)
+
+# Adjust citizenship categories
+df_vote["prcitshp_FOREIGN BORN, NOT A CITIZEN OF"] = 0
+
+# Add missing columns to match structure
+work_cols = set(df_work.columns)
+vote_cols = set(df_vote.columns)
+missing_in_vote = work_cols - vote_cols
+missing_in_work = vote_cols - work_cols
+
+for col in missing_in_vote:
+    df_vote[col] = 0
+for col in missing_in_work:
+    df_work[col] = 0
+```
+
+To ensure that the core variables in both df_vote and df_work have the same structure, we used one-hot encoding to convert categorical variables into numerical variables and added missing columns to match the structure between the two datasets.
+
+Example:added "FOREIGN BORN, NOT A CITIZEN OF" category in df_vote, which was missing compared to df_work. 
+
+
+2.e.
+```{python}
+scaler = MinMaxScaler()
+df_work['prtage_scaled'] = scaler.fit_transform(df_work[['prtage']])
+df_vote['prtage_scaled'] = scaler.transform(df_vote[['prtage']])
+```
+
+3. 
+```{python}
+X_work = df_work.drop(['work', 'prtage'], axis=1)  # Exclude prtage for now
+y_work = df_work['work']
+```
+
+Consider four values of hyperparameter C: 0.1, 1, 5, and 10 and three
+kernels: linear, radial, and sigmoid. Set random seed to 26
+```{python}
+kf = KFold(n_splits=5, shuffle=True, random_state=26)
+
+# Define hyperparameters
+Cs = [0.1, 1, 5, 10]
+kernels = ['linear', 'rbf', 'sigmoid']
+
+# Initialize lists to store results
+cv_errors = []
+
+for C in Cs:
+    for kernel in kernels:
+        model = SVC(C=C, kernel=kernel)
+        errors = []
+        for train_index, test_index in kf.split(X_work):
+            X_train, X_test = X_work.iloc[train_index], X_work.iloc[test_index]
+            y_train, y_test = y_work.iloc[train_index], y_work.iloc[test_index]
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+            error = 1 - accuracy_score(y_test, y_pred)
+            errors.append(error)
+        cv_error = np.mean(errors)
+        cv_errors.append((C, kernel, cv_error))
+        print(f"C={C}, Kernel={kernel}, CV Error={cv_error}")
+```
+
+4.
+```{python}
+# Select the best model
+best_model_params = min(cv_errors, key=lambda x: x[2])
+print(f"Best Model: C={best_model_params[0]}, Kernel={best_model_params[1]}")
+```
+
+5.
+```{python}
+# Fit the best model on the entire dataset
+best_model = SVC(C=best_model_params[0], kernel=best_model_params[1])
+best_model.fit(X_work, y_work)
+
+# Predict on the training data
+y_pred = best_model.predict(X_work)
+
+# Calculate accuracy score
+accuracy = accuracy_score(y_work, y_pred)
+print(f"Accuracy Score: {accuracy}")
+
+```
+
+6.
+```{python}
+# Prepare df_vote for prediction
+X_vote = df_vote.drop(['vote', 'prtage'], axis=1)  # Exclude prtage for now
+
+# Ensure both datasets have the same columns
+work_cols = set(X_work.columns)
+vote_cols = set(X_vote.columns)
+missing_in_vote = work_cols - vote_cols
+missing_in_work = vote_cols - work_cols
+
+for col in missing_in_vote:
+    X_vote[col] = 0
+for col in missing_in_work:
+    X_work[col] = 0
+
+# Debugging: Print column names to ensure they match
+print("X_work columns:", X_work.columns)
+print("X_vote columns before reindexing:", X_vote.columns)
+
+# Reindex X_vote to match the column order of X_work
+X_vote = X_vote.reindex(columns=X_work.columns)  # <-- FIX: Ensure column order matches
+
+# Debugging: Print column names after reindexing
+print("X_vote columns after reindexing:", X_vote.columns)
+
+# Refit the model with the updated X_work
+best_model = SVC(C=best_model_params[0], kernel=best_model_params[1])
+best_model.fit(X_work, y_work)
+
+# Predict imputed work schedules
+imputed_work = best_model.predict(X_vote) 
+df_vote['imputed_work'] = imputed_work
+```
+
+```{python}
+# Calculate summary statistics for the imputed measure
+summary_stats = df_vote['imputed_work'].describe()
+print(summary_stats)
+
+```
+
+7.
+```{python}
+import statsmodels.formula.api as smf
+
+# Include age and age squared in the model
+df_vote['prtage_squared'] = df_vote['prtage'] ** 2
+
+result = smf.ols('vote ~ imputed_work + prtage + prtage_squared + pesex_MALE', data=df_vote).fit()
+print(result.summary())
+
+```
+
+There seems to be a strong relationship between flexibility of workschedule and voting. All other variables constant, individuals with a flexible work schedule (imputed_work = 1) are 31.97 pps more likely to vote than those without a flexible work schedule, which makes intuitive sense and is statistically significant at the 0.1% level.
+
+Same goes for age (signifi ant at the 0.1% level). For each additional year of age, the probability of voting decreases by 2.05 pps, all else constant.
+
+Age squared has a positive coefficient, which suggests that the negative effect of age on voting diminishes as individuals grow older, meaning there is liekly aa non-linear relationship between age and voting behavior.
+
+Males are 1.46 pps more likely to vote than females, holding other variables constant, bit this is not statistically significant at the 5% level. This makes sense and suggests that the relationship of sex and voting behavior isn't strong.
+
+
+The intercept's value is not meaningful (suggests that voting of a 0 year old female without a flesxible work schedule is 109.63%)
+
+The model  explains 56.7% of the variance.
+
+8.
+
+```{python}
+# Define the attenuation bias correction formula
+def compute_M(a, b):
+    return 1 / (1 - 2 * b) * (1 - (1 - b) * b / a - (1 - b) * b / (1 - a))
+
+# Calculate inputs to the bias correction
+a = np.mean(imputed_work)
+b = best_model_params[2]  # Use the best model's CV error rate
+
+M = compute_M(a, b)
+print(f"M={M}")
+
+# Correct the estimate
+work_vote_relationship = result.params['imputed_work']
+work_vote_bias_correction = work_vote_relationship / M
+print(f"Corrected Estimate={work_vote_bias_correction}")
+
+```
+
+9.
+
+```{python}
+# Define the attenuation bias correction formula
+def compute_M(a, b):
+    return 1 / (1 - 2 * b) * (1 - (1 - b) * b / a - (1 - b) * b / (1 - a))
+
+# Calculate inputs to the bias correction
+a = np.mean(imputed_work)  # Mean of the imputed work schedule
+b = best_model_params[2]   # Cross-validation error rate of the best model
+
+# Compute M
+M = compute_M(a, b)
+print(f"M = {M}")
+
+# Correct the estimate for imputed_work
+work_vote_relationship = result.params['imputed_work']  # Original coefficient from regression
+work_vote_bias_correction = work_vote_relationship / M  # Corrected coefficient
+print(f"Corrected Estimate = {work_vote_bias_correction}")
+```

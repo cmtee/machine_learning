@@ -1,0 +1,11 @@
+Villy Christensen, Santiago de la Puente, Juan Carlos Sueiro, Jeroen Steenbeek, Patricia Majluf,
+Valuing seafood: The Peruvian fisheries sector,
+Marine Policy,
+Volume 44,
+2014,
+Pages 302-311,
+ISSN 0308-597X,
+https://doi.org/10.1016/j.marpol.2013.09.022.
+(https://www.sciencedirect.com/science/article/pii/S0308597X13002194)
+Abstract: There are tradeoffs in managing fisheries, and ideally such tradeoffs should be known when setting fisheries policies. An aspect of this, which is rarely considered, is the spin-off effect of different fisheries: the economic and social benefits that fisheries generate through processing through distribution and on to the end consumer. This study evaluated the benefits generated in the Peruvian marine fisheries sector through a comprehensive value chain analysis, based on a newly-developed combined ecosystem-economic modeling approach, which was integrated in the widely-used Ecopath with Ecosim approach and software. The value chain was parameterized by extensive data collection through 35 enterprise types covering the marine fisheries sector in Peru, including the world's biggest single-species fishery for anchoveta. While anchoveta is what is known about Peruvian fisheries, the study finds that anchoveta accounts for only 31% of the sector contribution to GDP and for only 23% of the employment. Thus, while anchoveta indeed is the fundamental fish species in the Peruvian ecosystem, there are other fisheries to be considered for management. The study indicates that the economic multipliers for Peruvian fisheries were 2.9 on average over the industry, and that these varied surprisingly little between fleets and between seafood categories indicating that the multipliers can be used beyond Peru to generalize the spin-off effect of the value chain. Employment multipliers vary much more across types of fisheries, but also around an average of 2.9; here it was clear that longer value chains result in more employment.
+Keywords: Ecological-economic model; GDP; Peru; Resource economy; Value chain
